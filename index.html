@@ -1,8 +1,349 @@
 <html>
 <head>
-	<title>First Document</title>
+	<title>Script Loading Priorities</title>
 </head>
-<body>
-	<h1>Hi</h1>
-</body>
+<body style="">
+
+ 
+
+
+  
+
+  <section id="wrapper" class="">
+    <article class="post">
+    <header>
+        <h1>JavaScript Loading Priorities in Chrome</h1>
+        <h2 class="headline">February 18, 2019</h2>
+    </header>
+    <section id="post-body">
+        <p>How browsers <a href="https://developers.google.com/web/fundamentals/performance/resource-prioritization">schedule</a> and execute scripts can impact the performance of web pages. While techniques like <code>&lt;script defer&gt;</code>, <code>&lt;link rel=preload&gt;</code> (and others) influence script loading, knowing how browsers interpret them can also be helpful. Thanks to <a href="https://github.com/nyaxt">Kouhei Ueno</a>, we now have an up to date summary of <a href="https://bit.ly/script-scheduling">script scheduling</a> in Chrome.</p>
+
+<style>
+.priorities-table {
+  color: #111;
+  font-size: 1em;
+}
+
+.priorities-table td {
+  border: 1px solid black;
+}
+
+.priorities-table .heading {
+  font-weight: bold;
+}
+
+.priorities-table .veryhigh {
+  background-color: #E0B9B1;
+}
+
+.priorities-table .high {
+  background-color: #EECDCD;
+}
+
+.priorities-table .medium {
+  background-color: #F3CCA2;
+}
+
+.priorities-table .low {
+  background-color: #D2E2F1;
+}
+
+.priorities-table .lowest {
+  background-color: #DBF2F1;
+}
+
+p>code, code {
+    background-color: #1D1C27;
+    overflow-wrap: break-word;
+    word-wrap: break-word;
+    padding: .1rem .3rem .2rem;
+    border-radius: 0.3rem;
+    color: #fff;
+    font-family: "Source Code Pro",Menlo,Consolas,Monaco,monospace;
+}
+
+
+@media screen and (max-width: 600px) {
+  table {
+    border: 0;
+    font-size: 1.5em;
+  }
+
+  .priorities-table {
+    font-size: 1.5em;
+  }
+
+  table caption {
+    font-size: 1.3em;
+  }
+  
+  table thead {
+    border: none;
+    clip: rect(0 0 0 0);
+    height: 1px;
+    margin: -1px;
+    overflow: hidden;
+    padding: 0;
+    position: absolute;
+    width: 1px;
+  }
+  
+  table tr {
+    border-bottom: 3px solid #ddd;
+    display: block;
+    margin-bottom: .625em;
+  }
+  
+  table td {
+    border-bottom: 1px solid #ddd;
+    display: block;
+    font-size: .8em;
+    text-align: right;
+  }
+  
+  table td::before {
+    /*
+    * aria-label has no advantage, it won't be read inside a table
+    content: attr(aria-label);
+    */
+    content: attr(data-label);
+    float: left;
+    font-weight: bold;
+    text-transform: uppercase;
+  }
+  
+  table td:last-child {
+    border-bottom: 0;
+  }
+}
+</style>
+
+<table class="priorities-table">
+  <tbody><tr>
+   <td>
+   </td>
+   <td><strong>Loading priority<br>
+(network/Blink)</strong>
+   </td>
+   <td><strong>Execution priority</strong>
+   </td>
+   <td><strong>Where should this be used?</strong>
+   </td>
+  </tr>
+  <tr>
+   <td class="heading"><code>&lt;script&gt;</code> in <code>&lt;head&gt;</code>
+   </td>
+   <td class="medium">Medium/High
+   </td>
+   <td class="veryhigh">VeryHigh -<br>
+Blocks parser
+   </td>
+   <td><ul>
+
+<li>Scripts that affect layout of <a href="https://developers.google.com/web/fundamentals/performance/user-centric-performance-metrics#first_meaningful_paint_and_hero_element_timing">First Meaningful Paint</a> (FMP) / <a href="https://developers.google.com/web/fundamentals/performance/user-centric-performance-metrics#first_paint_and_first_contentful_paint">First Contentful Paint</a> (FCP) content
+</li><li>Scripts that must be run before other scripts
+<p>&nbsp;</p>
+<strong>Examples:</strong><ul>
+
+<li>Framework runtime (if <a href="https://developers.google.com/web/updates/2019/02/rendering-on-the-web">not static-rendered</a>)
+</li><li>Polyfills
+</li><li>A/B testing that affects DOM structure of the entire page</li></ul>
+</li></ul>
+
+   </td>
+  </tr>
+  <tr>
+   <td class="heading"><code>&lt;link rel=preload&gt;</code> +<br>
+<code>&lt;script async&gt;</code> hack
+<p>
+or 
+</p><p>
+<code>&lt;script type=module async&gt;</code>
+   </p></td>
+   <td class="medium">Medium/High
+   </td>
+   <td class="high">High -<br>
+Interrupts parser
+   </td>
+   <td><ul>
+
+<li>Scripts that generate critical content (needed for FMP) 
+<ul>
+ <li>But shouldn't affect above-the-fold layout of the page
+</li><li>Scripts that trigger network fetches of dynamically inserted content
+</li><li>Scripts that need to execute as soon as their imports are fetched, use <code>&lt;script async type=module&gt;</code>
+
+<p>&nbsp;</p>
+<strong>Examples:</strong><ul>
+
+<li>Draw something on <code>&lt;canvas&gt;</code></li></ul>
+</li></ul>
+
+</li></ul>
+
+   </td>
+  </tr>
+  <tr>
+   <td class="heading"><code>&lt;script async&gt;</code>
+   </td>
+   <td class="low">Lowest/Low
+   </td>
+   <td class="high">High -<br>
+Interrupts parser
+   </td>
+   <td>Be <a href="https://calendar.perfplanet.com/2016/prefer-defer-over-async/">careful</a> when considering <code>&lt;script async&gt;</code>. Today it is often used to indicate non-critical scripts, but is inconsistent in being loaded at low priority and executed at high priority.
+   </td>
+  </tr>
+  <tr>
+   <td class="heading"><code>&lt;script defer&gt;</code>
+   </td>
+   <td class="low">Lowest/Low
+   </td>
+   <td class="lowest">VeryLow -<br>
+Runs after <code>&lt;script&gt;</code>s at end of <code>&lt;body&gt;</code>
+   </td>
+   <td><ul>
+
+<li>Scripts that generate non-critical content
+</li><li>Scripts that provide key interactive features that &gt;50% of page view sessions would use
+<p>&nbsp;</p>
+<strong>Examples:</strong><ul>
+
+<li>Ad frameworks
+</li><li>Framework runtime (if <a href="https://developers.google.com/web/updates/2019/02/rendering-on-the-web#csr">client-side</a> or <a href="https://developers.google.com/web/updates/2019/02/rendering-on-the-web#server-rendering">server</a> rendered)</li></ul>
+</li></ul>
+
+   </td>
+  </tr>
+  <tr>
+   <td class="heading">
+   <code>&lt;script&gt;</code> at the end of <code>&lt;body&gt;</code>
+   </td>
+   <td class="medium">Medium/High
+   </td>
+   <td class="low">Low -<br>
+Waits parser end
+   </td>
+   <td>Be careful when using <code>&lt;script&gt;</code> at the end of <code>&lt;body&gt;</code> when you think they are low priority. These scripts are scheduled at Medium/High priority.
+   </td>
+  </tr>
+  <tr>
+   <td class="heading"><code>&lt;script defer&gt;</code> at the end of <code>&lt;body&gt;</code>
+   </td>
+   <td class="lowest">Lowest/Low -<br>
+end of the queue
+   </td>
+   <td class="lowest">VeryLow -<br>
+Runs after <code>&lt;script&gt;</code>s at end of <code>&lt;body&gt;</code>
+   </td>
+   <td><ul>
+
+<li>Scripts that provide interactive features that may be used occasionally
+<p>&nbsp;</p>
+<strong>Examples:</strong>
+
+<ul>
+<li>Load "Related articles"
+</li><li>"Give feedback" feature</li></ul>
+</li></ul>
+
+   </td>
+  </tr>
+  <tr>
+   <td><code>&lt;link rel=prefetch&gt;</code> + <code>&lt;script&gt;</code> in a next-page navigation
+   </td>
+   <td class="lowest">Idle / Lowest
+   </td>
+   <td class="medium">Depends on  when and how the script is consumed.
+   </td>
+   <td>Scripts very likely to provide important functionality to a next-page navigation.
+<p>&nbsp;</p>
+<strong>Examples:</strong><ul>
+
+<li>JavaScript bundle for a future route</li></ul>
+
+   </td>
+  </tr>
+</tbody></table>
+
+<p>Note: Loading priorities are not guaranteed to be consistent cross-browser so use this knowledge wisely and measure when unsure. Ideally, aim to delivery a great experience to the widest number of users possible.</p>
+
+<p>If you're a web developer wondering where you can see the "Loading Priority", Chrome DevTools has an optional "Priority" column available in the Network panel. Right-click the column headers and you can switch it on:</p>
+
+<!--
+<img data-src="/../assets/images/walmart.png" class="lazyload">
+-->
+
+<p><img data-src="https://cdn-images-1.medium.com/max/2000/1*ZnDXs4jhzYnpAiZExRDdtQ.png" class=" lazyloaded" alt="Priority in DevTools" src="https://cdn-images-1.medium.com/max/2000/1*ZnDXs4jhzYnpAiZExRDdtQ.png"></p>
+
+<p>This above priorities <a href="/../assets/images/tweet-priorities@3x.png">summary</a> is still true as of February 2019. I would personally love to get a better understanding of loading priorities in other browsers too. Hopefully this overview is useful to someone out there!</p>
+
+<p><em>Thanks to Kouhei, Dom Faralino, Pat Meenan, Kenji Baheux and Yoav Weiss for their contributions helping better explain Chrome's network stack.</em></p>
+
+<h2>Further reading</h2>
+
+<ul>
+<li><a href="https://bit.ly/script-scheduling">Scheduling Scripts Intuitively and Performantly</a></li>
+<li><a href="https://docs.google.com/document/d/1bCDuq9H1ih9iNjgzyAL0gpwNFiEP4TZS-YLRp_RuMlc/edit#">Chrome Resource Priorities and Scheduling</a></li>
+<li><a href="https://medium.com/reloading/preload-prefetch-and-priorities-in-chrome-776165961bbf">Preload, Prefetch And Priorities in Chrome</a></li>
+<li><a href="https://twitter.com/yoavweiss/status/1096075414697639936">Priorities for rel=preload in Chrome and WebKit</a></li>
+</ul>
+
+    </section>
+</article>
+<footer id="post-meta" class="clearfix">
+    <a href="http://twitter.com/addyosmani">
+        <img class="avatar" src="/assets/images/avatar.png">
+        <div>
+            <span class="dark">Addy Osmani</span>
+            <span>Engineering Manager at Google working on Chrome</span>
+        </div>
+    </a>
+
+    <section id="sharing">
+        <a class="twitter" href="https://twitter.com/intent/tweet?text=http://addyosmani.com/blog/script-priorities/ - JavaScript Loading Priorities in Chrome by @addyosmani"><span class="icon-twitter"> Tweet</span></a>
+
+<a class="facebook" href="#" onclick="
+    window.open(
+      'https://www.facebook.com/sharer/sharer.php?u='+encodeURIComponent(location.href),
+      'facebook-share-dialog',
+      'width=626,height=436');
+    return false;"><span class="icon-facebook-rect"> Share</span>
+</a>
+    </section>
+</footer>
+
+<!-- Disqus comments -->
+<!-- 
+ -->
+<!-- Archive post list -->
+<!--  -->
+
+
+
+
+  </section>
+
+  
+  <script async="" src="//www.google-analytics.com/analytics.js"></script><script src="/assets/js/lazysizes.min.js" async=""></script>
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.1/jquery.min.js"></script>
+  <script src="/assets/js/highlight.js"></script>
+  <script>hljs.initHighlightingOnLoad();</script>
+  
+
+  <script>
+    (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+    (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+    m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+    })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+    ga('create', 'UA-46754295-1', 'auto');
+    ga('send', 'pageview');
+  </script>
+
+
+
+
+
+<object id="__symantecMPKIClientMessenger" data-supports-flavor-configuration="true" data-extension-version="1.0.0.143" style="display: none;"></object><span id="__symantecMPKIClientDetector" style="display: none;">__PRESENT</span></body>
 </html>
